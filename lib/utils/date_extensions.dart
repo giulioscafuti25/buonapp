@@ -35,11 +35,21 @@ extension EstensioniData on DateTime {
   }
 
   // Restituisce true se la data è già passata
-  bool get ePassata => isBefore(DateTime.now());
+  bool get ePassata {
+    final oggi = DateTime(
+        DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final data = DateTime(year, month, day);
+    return data.isBefore(oggi);
+  }
 
   // Restituisce il numero di giorni rimanenti alla data
   // (negativo se la data è già passata)
-  int get giorniRimanenti => difference(DateTime.now()).inDays;
+  int get giorniRimanenti {
+    final oggi = DateTime(
+        DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final scadenza = DateTime(year, month, day);
+    return scadenza.difference(oggi).inDays;
+  }
 
   // Restituisce true se la data è entro i prossimi N giorni
   bool entroGiorni(int giorni) {
@@ -49,11 +59,10 @@ extension EstensioniData on DateTime {
   }
 
   // Restituisce una stringa descrittiva della scadenza
-  // es. "Scade oggi", "Scade tra 3 giorni", "Scaduto 2 giorni fa"
   String get descrizioneScadenza {
     final giorni = giorniRimanenti;
-    if (eOggi) return 'Scade oggi';
     if (giorni > 0) return 'Scade tra $giorni giorni';
+    if (giorni == 0) return 'Scade oggi';
     return 'Scaduto ${giorni.abs()} giorni fa';
   }
 }

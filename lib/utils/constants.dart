@@ -71,7 +71,7 @@ class TestiApp {
 
   // Titoli schermate
   static const String titoloBuoni = 'I miei buoni';
-  static const String titoloMappa = 'Mappa supermercati';
+  static const String titoloMappa = 'Mappa buoni';
   static const String titoloAvvisi = 'Avvisi';
   static const String titoloNuovoBuono = 'Nuovo buono';
   static const String titoloModificaBuono = 'Modifica buono';
