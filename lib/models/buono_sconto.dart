@@ -1,35 +1,35 @@
 // buono_sconto.dart - Modello principale del buono sconto
-//Contiene la struttura dati del buono e i metodi di conversione per il database
+// Contiene la struttura dati del buono e i metodi di conversione per il database
 
-class BuonoSconto{
-  //Identificatore univoco del buono (null se non ancora salvato nel database)
+class BuonoSconto {
+  // Identificatore univoco del buono (null se non ancora salvato nel database)
   final int? id;
 
-  //Nome del supermercato dove è stato ricevuto il buono
+  // Nome del supermercato dove è stato ricevuto il buono
   final String nomeNegozio;
 
-  //Destizione o nota aggiuntiva sul buono
+  // Descrizione o nota aggiuntiva sul buono
   final String descrizione;
 
-  //Data di scadenza del buono
+  // Data di scadenza del buono
   final DateTime dataScadenza;
 
-  //Percorso locale della foto del buono salvata sul dispositivo
+  // Percorso locale della foto del buono salvata sul dispositivo
   final String? percorsoFoto;
 
-  //Latitutinde della posizione del negozio
+  // Latitudine della posizione del negozio
   final double? latitudine;
 
-  //Longitudine della posizione del negozio
+  // Longitudine della posizione del negozio
   final double? longitudine;
 
-  //Indirizzo testuale del negozio (ottenuto tramite geocoding inverso)
+  // Indirizzo testuale del negozio (ottenuto tramite geocoding inverso)
   final String? indirizzo;
 
-  //Data in cui il buono è stato aggiunto
+  // Data in cui il buono è stato aggiunto all'app
   final DateTime dataAggiunta;
 
-  //Costruttore principale del buono sconto
+  // Costruttore principale
   const BuonoSconto({
     this.id,
     required this.nomeNegozio,
@@ -42,20 +42,32 @@ class BuonoSconto{
     required this.dataAggiunta,
   });
 
-  //Restituisce true se il buono è già scaduto
-  bool get eScaduto => DateTime.now().isAfter(dataScadenza);
+  // Restituisce true se il buono è già scaduto
+  // Confronta solo le date senza considerare l'ora
+  bool get eScaduto {
+    final oggi = DateTime(
+        DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final scadenza = DateTime(
+        dataScadenza.year, dataScadenza.month, dataScadenza.day);
+    return oggi.isAfter(scadenza);
+  }
 
-  //Restituisce il numero di giorni rimanenti alla scadenza (negativo se già scaduto)
-  int get giorniAllaScadenza =>
-    dataScadenza.difference(DateTime.now()).inDays;
+  // Restituisce il numero di giorni rimanenti alla scadenza
+  // (negativo se già scaduto)
+  int get giorniAllaScadenza {
+    final oggi = DateTime(
+        DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final scadenza = DateTime(
+        dataScadenza.year, dataScadenza.month, dataScadenza.day);
+    return scadenza.difference(oggi).inDays;
+  }
 
-  //Restituisce true se il buono scade entro i prossimi 7 giorni
-  bool get staPerScadere =>
-    !eScaduto && giorniAllaScadenza <= 7;
+  // Restituisce true se il buono scade entro i prossimi 7 giorni
+  bool get staPerScadere => !eScaduto && giorniAllaScadenza <= 7;
 
-  //Converte il buono in una Map per salvarlo nel dabatase SqLite
-  Map<String,dynamic> aDatabase(){
-    return{
+  // Converte il buono in una Map per salvarlo nel database SQLite
+  Map<String, dynamic> aDatabase() {
+    return {
       'id': id,
       'nomeNegozio': nomeNegozio,
       'descrizione': descrizione,
@@ -68,7 +80,7 @@ class BuonoSconto{
     };
   }
 
-  //Crea un buono sconto da una Map proveniente dal database SqLite
+  // Crea un BuonoSconto da una Map proveniente dal database SQLite
   factory BuonoSconto.dalDatabase(Map<String, dynamic> mappa) {
     return BuonoSconto(
       id: mappa['id'] as int?,
@@ -83,7 +95,7 @@ class BuonoSconto{
     );
   }
 
-  //Crea una copia del buono con alcuni campi modificati
+  // Crea una copia del buono con alcuni campi modificati
   BuonoSconto copiaCon({
     int? id,
     String? nomeNegozio,
@@ -94,17 +106,17 @@ class BuonoSconto{
     double? longitudine,
     String? indirizzo,
     DateTime? dataAggiunta,
-    }) {
-      return BuonoSconto(
-        id: id ?? this.id,
-        nomeNegozio: nomeNegozio ?? this.nomeNegozio,
-        descrizione: descrizione ?? this.descrizione,
-        dataScadenza: dataScadenza ?? this.dataScadenza,
-        percorsoFoto: percorsoFoto ?? this.percorsoFoto,
-        latitudine: latitudine ?? this.latitudine,
-        longitudine: longitudine ?? this.longitudine,
-        indirizzo: indirizzo ?? this.indirizzo,
-        dataAggiunta: dataAggiunta ?? this.dataAggiunta,
-      );
+  }) {
+    return BuonoSconto(
+      id: id ?? this.id,
+      nomeNegozio: nomeNegozio ?? this.nomeNegozio,
+      descrizione: descrizione ?? this.descrizione,
+      dataScadenza: dataScadenza ?? this.dataScadenza,
+      percorsoFoto: percorsoFoto ?? this.percorsoFoto,
+      latitudine: latitudine ?? this.latitudine,
+      longitudine: longitudine ?? this.longitudine,
+      indirizzo: indirizzo ?? this.indirizzo,
+      dataAggiunta: dataAggiunta ?? this.dataAggiunta,
+    );
   }
 }
