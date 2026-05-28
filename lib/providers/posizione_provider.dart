@@ -4,7 +4,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/location_service.dart';
-import '../services/geocoding_service.dart';
 
 //Eccezione personalizzata per gli errori di posizione
 class EccezionePosizione implements Exception{
@@ -18,10 +17,14 @@ class EccezionePosizione implements Exception{
 //AsyncNotifier che gestisce la posizione corrente dell'utente
 class GestorePosizione extends AsyncNotifier<Position?>{
   @override
-  Future<Position?> build() async{
-    //All'avvio non recupera automaticamente la posizione
-    // per non chiedere subito i permessi GPS
-    return null;
+  Future<Position?> build() async {
+    // Recupera automaticamente la posizione all'avvio
+    try {
+      return await ServizioPosizione.ottieniPosizione();
+    } catch (errore) {
+      // Se non riesce (GPS disabilitato o permessi negati) restituisce null
+      return null;
+    }
   }
 
   Future <void> recuperaPosizione() async{
@@ -35,7 +38,9 @@ class GestorePosizione extends AsyncNotifier<Position?>{
       //Aggiorna lo stato con la posizione ottenuta
       state = AsyncValue.data(posizione);
     } catch (errore){
-      throw EccezionePosizione('Errore nel recupero della posizione: $errore');
+      // In caso di errore (GPS negato/disabilitato) imposta lo stato a null
+      // così la UI esce dallo stato loading e mostra il messaggio appropriato
+      state = const AsyncValue.data(null);
     }
   }
 
@@ -51,22 +56,3 @@ final providerPosizione =
   return GestorePosizione();
 });
 
-//Provider che restituisce l'indirizzo testuale della posizione corrente
-// Effettua una chiamata REST API a Nominatim per il geocoding inverso
-final providerIndirizzo = FutureProvider.autoDispose.family<String?, Position?>(
-  (ref, posizione) async{
-    // Se la posizione è null, restituisce null
-    if (posizione == null) return null;
-
-    try{
-      //Chiama il servizio di geocoding per ottenere l'indirizzo
-      final indirizzo = await ServizioGeocoding.coordinateAdIndirizzo(
-        latitudine: posizione.latitude,
-        longitudine: posizione.longitude,
-      );
-      return indirizzo;
-    } catch (errore){
-      throw EccezionePosizione('Errore nel recupero dell\'indirizzo: $errore');
-    }
-  },
-);
