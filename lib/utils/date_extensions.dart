@@ -61,8 +61,8 @@ extension EstensioniData on DateTime {
   // Restituisce una stringa descrittiva della scadenza
   String get descrizioneScadenza {
     final giorni = giorniRimanenti;
-    if (giorni > 0) return 'Scade tra $giorni giorni';
+    if (giorni > 0) return 'Scade tra $giorni ${giorni == 1 ? 'giorno' : 'giorni'}';
     if (giorni == 0) return 'Scade oggi';
-    return 'Scaduto ${giorni.abs()} giorni fa';
+    return 'Scaduto ${giorni.abs()} ${giorni.abs() == 1 ? 'giorno' : 'giorni'} fa';
   }
 }
