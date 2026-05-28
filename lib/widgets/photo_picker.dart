@@ -165,9 +165,18 @@ class SelettoreFoto extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.camera_alt_outlined),
               title: const Text(TestiApp.scattaFoto),
-              onTap: () {
+              onTap: () async {
                 Navigator.of(contestoSheet).pop();
-                _scattaFoto();
+                try {
+                  await _scattaFoto();
+                } catch (_) {
+                  // Mostra un messaggio all'utente se la fotocamera non è disponibile
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text(TestiApp.erroreFoto)),
+                    );
+                  }
+                }
               },
             ),
 
@@ -175,9 +184,18 @@ class SelettoreFoto extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
               title: const Text(TestiApp.scegliGalleria),
-              onTap: () {
+              onTap: () async {
                 Navigator.of(contestoSheet).pop();
-                _scegliDaGalleria();
+                try {
+                  await _scegliDaGalleria();
+                } catch (_) {
+                  // Mostra un messaggio all'utente se la galleria non è disponibile
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text(TestiApp.erroreFoto)),
+                    );
+                  }
+                }
               },
             ),
 
