@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../models/buono_sconto.dart';
 import '../providers/buoni_provider.dart';
@@ -26,12 +27,26 @@ class _StatoMapScreen extends ConsumerState<MapScreen> {
   // Controller per spostare la mappa programmaticamente
   final MapController _controllerMappa = MapController();
 
+  // Indica se c'è connessione internet
+  bool _haConnessione = true;
+
   @override
   void initState() {
     super.initState();
     // Recupera la posizione automaticamente all'apertura
     Future.microtask(() =>
         ref.read(providerPosizione.notifier).recuperaPosizione());
+    // Controlla la connessione internet
+    _verificaConnessione();
+  }
+
+  // Verifica se c'è connessione internet
+  Future<void> _verificaConnessione() async {
+    final risultato = await Connectivity().checkConnectivity();
+    if (!mounted) return;
+    setState(() {
+      _haConnessione = risultato.any((r) => r != ConnectivityResult.none);
+    });
   }
 
   @override
@@ -60,19 +75,66 @@ class _StatoMapScreen extends ConsumerState<MapScreen> {
               style: TextStyle(color: Colors.white),
             ),
             Text(
-              'Buoni nelle vicinanze',
+              'Posizione dei tuoi buoni',
               style: TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ],
         ),
       ),
-      body: tuttiBuoni.when(
-        data: (listaBuoni) =>
-            _costruisciMappa(context, listaBuoni, posizione),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (errore, stack) => _costruisciErrore(context),
-      ),
+      body: !_haConnessione
+          ? _costruisciErroreConnessione()
+          : tuttiBuoni.when(
+              data: (listaBuoni) =>
+                  _costruisciMappa(context, listaBuoni, posizione),
+              loading: () =>
+                  const Center(child: CircularProgressIndicator()),
+              error: (errore, stack) => _costruisciErrore(context),
+            ),
       bottomNavigationBar: _costruisciNavBar(context, 1),
+    );
+  }
+
+  // Costruisce il messaggio di errore per mancanza di connessione
+  Widget _costruisciErroreConnessione() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.wifi_off_outlined,
+            size: 80,
+            color: ColoriApp.testoSecondario,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Connessione assente',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: ColoriApp.testoSecondario,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'La mappa non è disponibile senza internet.\nI tuoi buoni sono al sicuro!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: ColoriApp.testoSecondario,
+            ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: _verificaConnessione,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Riprova'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: ColoriApp.principale,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -93,7 +155,7 @@ class _StatoMapScreen extends ConsumerState<MapScreen> {
         FlutterMap(
           mapController: _controllerMappa,
           options: const MapOptions(
-            initialCenter: LatLng(41.9028, 12.4964), // Roma come default iniziale
+            initialCenter: LatLng(41.9028, 12.4964),
             initialZoom: 13,
           ),
           children: [
@@ -129,7 +191,7 @@ class _StatoMapScreen extends ConsumerState<MapScreen> {
                 ],
               ),
 
-            // Marker negozi con buoni
+            // Marker buoni
             MarkerLayer(
               markers: buoniConPosizione.map((buono) {
                 return Marker(
@@ -228,12 +290,14 @@ class _StatoMapScreen extends ConsumerState<MapScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    '1 buono',
-                    style: TextStyle(
+                  Text(
+                    buono.dataScadenza.descrizioneScadenza,
+                    style: const TextStyle(
                       fontSize: 11,
                       color: ColoriApp.testoSecondario,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -305,7 +369,7 @@ class _StatoMapScreen extends ConsumerState<MapScreen> {
                   Navigator.of(contestoSheet).pop();
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => DetailScreen(buono: buono),
+                      builder: (_) => DetailScreen.fromBuono(buono),
                     ),
                   );
                 },

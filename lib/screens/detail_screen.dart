@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/buono_sconto.dart';
 import '../providers/buoni_provider.dart';
@@ -15,13 +16,34 @@ import '../widgets/expiry_badge.dart';
 import '../screens/edit_screen.dart';
 
 class DetailScreen extends ConsumerWidget {
-  // Il buono da visualizzare
-  final BuonoSconto buono;
+  // L'id del buono da visualizzare (usato per recuperarlo sempre aggiornato)
+  final int buonoId;
 
-  const DetailScreen({super.key, required this.buono});
+  // Il buono iniziale passato come fallback (prima del caricamento dal provider)
+  final BuonoSconto buonoIniziale;
+
+  const DetailScreen({super.key, required this.buonoId, required this.buonoIniziale});
+
+  /// Costruttore di convenienza che accetta direttamente un BuonoSconto
+  factory DetailScreen.fromBuono(BuonoSconto buono, {Key? key}) {
+    return DetailScreen(
+      key: key,
+      buonoId: buono.id!,
+      buonoIniziale: buono,
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Osserva il provider: se il buono viene modificato altrove, la UI
+    // si aggiorna automaticamente con i dati più recenti
+    final tuttiBuoni = ref.watch(providerBuoni).value;
+    final buono = tuttiBuoni?.firstWhere(
+          (b) => b.id == buonoId,
+          orElse: () => buonoIniziale,
+        ) ??
+        buonoIniziale;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: ColoriApp.principale,
@@ -34,12 +56,12 @@ class DetailScreen extends ConsumerWidget {
           // Tasto modifica
           IconButton(
             icon: const Icon(Icons.edit_outlined),
-            onPressed: () => _apriModifica(context),
+            onPressed: () => _apriModifica(context, buono),
           ),
           // Tasto elimina
           IconButton(
             icon: const Icon(Icons.delete_outline),
-            onPressed: () => _confermaElimina(context, ref),
+            onPressed: () => _confermaElimina(context, ref, buono),
           ),
         ],
       ),
@@ -48,7 +70,7 @@ class DetailScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Foto del buono
-            _costruisciFoto(),
+            _costruisciFoto(buono),
 
             Padding(
               padding: const EdgeInsets.all(DimensioniApp.paddingPagina),
@@ -118,7 +140,7 @@ class DetailScreen extends ConsumerWidget {
                   if (buono.latitudine != null &&
                       buono.longitudine != null) ...[
                     const SizedBox(height: 20),
-                    _costruisciMappa(context, ref),
+                    _costruisciMappa(context, ref, buono),
                   ],
                 ],
               ),
@@ -130,7 +152,7 @@ class DetailScreen extends ConsumerWidget {
   }
 
   // Costruisce la foto del buono in cima alla schermata
-  Widget _costruisciFoto() {
+  Widget _costruisciFoto(BuonoSconto buono) {
     if (buono.percorsoFoto != null) {
       return Image.file(
         File(buono.percorsoFoto!),
@@ -192,7 +214,7 @@ class DetailScreen extends ConsumerWidget {
   }
 
   // Costruisce la mappa con il pin del negozio
-  Widget _costruisciMappa(BuildContext context, WidgetRef ref) {
+  Widget _costruisciMappa(BuildContext context, WidgetRef ref, BuonoSconto buono) {
     final coordinateNegozio = LatLng(buono.latitudine!, buono.longitudine!);
 
     return Column(
@@ -241,7 +263,7 @@ class DetailScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         TextButton.icon(
-          onPressed: () => _apriInMaps(context, ref),
+          onPressed: () => _apriInMaps(context, buono),
           icon: const Icon(Icons.open_in_new, size: 16),
           label: const Text('Apri in Maps'),
           style: TextButton.styleFrom(
@@ -253,14 +275,14 @@ class DetailScreen extends ConsumerWidget {
   }
 
   // Apre la schermata di modifica del buono
-  void _apriModifica(BuildContext context) {
+  void _apriModifica(BuildContext context, BuonoSconto buono) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => EditScreen(buono: buono)),
     );
   }
 
   // Mostra il dialogo di conferma eliminazione
-  Future<void> _confermaElimina(BuildContext context, WidgetRef ref) async {
+  Future<void> _confermaElimina(BuildContext context, WidgetRef ref, BuonoSconto buono) async {
     final conferma = await showDialog<bool>(
       context: context,
       builder: (contestoDialogo) => AlertDialog(
@@ -311,23 +333,26 @@ class DetailScreen extends ConsumerWidget {
     }
   }
 
-  // Apre la posizione del negozio in Maps
-  Future<void> _apriInMaps(BuildContext context, WidgetRef ref) async {
+  // Apre la posizione del negozio nell'app Maps installata sul dispositivo
+  Future<void> _apriInMaps(BuildContext context, BuonoSconto buono) async {
+    final uri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=${buono.latitudine},${buono.longitudine}',
+    );
     try {
-      final urlMaps =
-          'https://www.google.com/maps/search/?api=1&query=${buono.latitudine},${buono.longitudine}';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Apri questo link in Maps: $urlMaps'),
-        ),
-      );
+      final aperto = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!aperto && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Nessuna app Maps trovata sul dispositivo.'),
+            backgroundColor: ColoriApp.scaduto,
+          ),
+        );
+      }
     } catch (errore) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              'Impossibile aprire Maps. Riprova più tardi.',
-            ),
+            content: Text('Impossibile aprire Maps. Riprova più tardi.'),
             backgroundColor: ColoriApp.scaduto,
           ),
         );

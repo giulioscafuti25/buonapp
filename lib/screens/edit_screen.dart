@@ -418,11 +418,16 @@ class _StatoEditScreen extends ConsumerState<EditScreen> {
   // Apre il date picker per selezionare la data di scadenza
   Future<void> _selezionaData(BuildContext context) async {
     try {
+      // Se il buono è già scaduto, initialDate dev'essere >= firstDate
+      // per evitare un'asserzione fatale di Flutter
+      final oggi = DateTime.now();
       final dataSelezionata = await showDatePicker(
         context: context,
-        initialDate: _dataScadenzaSelezionata,
-        firstDate: DateTime.now(),
-        lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+        initialDate: _dataScadenzaSelezionata.isAfter(oggi)
+            ? _dataScadenzaSelezionata
+            : oggi,
+        firstDate: oggi,
+        lastDate: oggi.add(const Duration(days: 365 * 5)),
         locale: const Locale('it'),
       );
       if (dataSelezionata != null) {
@@ -446,22 +451,27 @@ class _StatoEditScreen extends ConsumerState<EditScreen> {
     setState(() => _staSalvando = true);
 
     try {
-      // Ottieni la posizione GPS se disponibile
+      // Priorità: coordinate ricercate manualmente > GPS corrente
+      // (evita che il GPS sovrascriva una posizione già impostata manualmente)
       final posizione = ref.read(providerPosizione).value;
       final latitudine =
-          posizione?.latitude ?? _latitudineRicercata;
+          _latitudineRicercata ?? posizione?.latitude;
       final longitudine =
-          posizione?.longitude ?? _longitudineRicercata;
+          _longitudineRicercata ?? posizione?.longitude;
 
-      // Crea il buono aggiornato usando copiaCon
-      final buonoAggiornato = widget.buono.copiaCon(
+      // Costruisce il buono aggiornato direttamente invece di usare copiaCon,
+      // perché copiaCon usa "?? this.field" e non può azzerare campi nullable
+      // (es. rimozione foto, rimozione indirizzo resterebbero col valore vecchio)
+      final buonoAggiornato = BuonoSconto(
+        id: widget.buono.id,
         nomeNegozio: _controllerNomeNegozio.text.trim(),
         descrizione: _controllerDescrizione.text.trim(),
         dataScadenza: _dataScadenzaSelezionata,
-        percorsoFoto: _percorsoFotoSelezionata,
-        latitudine: latitudine,
+        percorsoFoto: _percorsoFotoSelezionata,        // null = foto rimossa
+        latitudine: latitudine,                        // null = posizione rimossa
         longitudine: longitudine,
-        indirizzo: _indirizzoRicercato,
+        indirizzo: _indirizzoRicercato,                // null = indirizzo rimosso
+        dataAggiunta: widget.buono.dataAggiunta,
       );
 
       await ref.read(providerBuoni.notifier).aggiornaBuono(buonoAggiornato);

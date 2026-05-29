@@ -249,7 +249,7 @@ class ListScreen extends ConsumerWidget {
 
   void _apriDettaglio(BuildContext context, BuonoSconto buono) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => DetailScreen(buono: buono)),
+      MaterialPageRoute(builder: (_) => DetailScreen.fromBuono(buono)),
     );
   }
 

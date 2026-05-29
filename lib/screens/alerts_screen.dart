@@ -1,18 +1,13 @@
-// alerts_screen.dart - Schermata degli avvisi e impostazioni notifiche
-// Permette di gestire le preferenze delle notifiche e vedere lo storico degli avvisi
+// alerts_screen.dart - Schermata delle impostazioni notifiche
+// Permette di configurare le preferenze delle notifiche di scadenza
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../models/buono_sconto.dart';
-import '../providers/buoni_provider.dart';
 import '../providers/preferenze_provider.dart';
 import '../utils/constants.dart';
-import '../utils/date_extensions.dart';
-import '../widgets/expiry_badge.dart';
 import '../screens/list_screen.dart';
 import '../screens/map_screen.dart';
-import '../screens/detail_screen.dart';
 
 class AlertsScreen extends ConsumerWidget {
   const AlertsScreen({super.key});
@@ -21,8 +16,6 @@ class AlertsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Osserva le preferenze notifiche
     final preferenze = ref.watch(providerPreferenze);
-    // Osserva la lista dei buoni
-    final tuttiBuoni = ref.watch(providerBuoni);
 
     return Scaffold(
       appBar: AppBar(
@@ -44,18 +37,6 @@ class AlertsScreen extends ConsumerWidget {
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (errore, stack) => const Text(
                 'Impossibile caricare le impostazioni. Riprova più tardi.',
-                style: TextStyle(color: ColoriApp.scaduto),
-              ),
-            ),
-            const SizedBox(height: 24),
-            _costruisciTitoloSezione('Avvisi recenti'),
-            const SizedBox(height: 8),
-            tuttiBuoni.when(
-              data: (listaBuoni) =>
-                  _costruisciStoricoAvvisi(context, listaBuoni),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (errore, stack) => const Text(
-                'Impossibile caricare gli avvisi. Riprova più tardi.',
                 style: TextStyle(color: ColoriApp.scaduto),
               ),
             ),
@@ -195,111 +176,6 @@ class AlertsScreen extends ConsumerWidget {
     );
   }
 
-  // Costruisce lo storico degli avvisi
-  // Mostra solo i buoni in scadenza entro 7 giorni e quelli scaduti
-  Widget _costruisciStoricoAvvisi(
-      BuildContext context, List<BuonoSconto> listaBuoni) {
-    final buoniDaAvvisare = listaBuoni
-        .where((buono) => buono.staPerScadere || buono.eScaduto)
-        .toList()
-      ..sort((a, b) {
-        if (a.eScaduto && !b.eScaduto) return 1;
-        if (!a.eScaduto && b.eScaduto) return -1;
-        return a.dataScadenza.compareTo(b.dataScadenza);
-      });
-
-    if (buoniDaAvvisare.isEmpty) {
-      return const Center(
-        child: Text(
-          'Nessun avviso — tutti i buoni sono validi! 🎉',
-          style: TextStyle(color: ColoriApp.testoSecondario),
-          textAlign: TextAlign.center,
-        ),
-      );
-    }
-
-    return Column(
-      children: buoniDaAvvisare.map((buono) {
-        return _costruisciRigaAvviso(context, buono);
-      }).toList(),
-    );
-  }
-
-  // Costruisce una riga dello storico avvisi
-  // Toccando la riga naviga al dettaglio del buono
-  Widget _costruisciRigaAvviso(BuildContext context, BuonoSconto buono) {
-    final IconData icona;
-    final Color coloreIcona;
-    final Color coloreSfondo;
-
-    if (buono.eScaduto) {
-      icona = Icons.cancel_outlined;
-      coloreIcona = ColoriApp.scaduto;
-      coloreSfondo = ColoriApp.scadutoSfondo;
-    } else if (buono.staPerScadere) {
-      icona = Icons.warning_amber_rounded;
-      coloreIcona = ColoriApp.inScadenza;
-      coloreSfondo = ColoriApp.inScadenzaSfondo;
-    } else {
-      icona = Icons.check_circle_outline;
-      coloreIcona = ColoriApp.valido;
-      coloreSfondo = ColoriApp.validoSfondo;
-    }
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => DetailScreen(buono: buono),
-          ),
-        ),
-        leading: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: coloreSfondo,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icona, color: coloreIcona, size: 20),
-        ),
-        title: Text(
-          buono.nomeNegozio,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Scade il ${buono.dataScadenza.formattoItaliano}',
-              style: const TextStyle(
-                  fontSize: 11, color: ColoriApp.testoSecondario),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              buono.dataScadenza.descrizioneScadenza,
-              style: TextStyle(
-                fontSize: 11,
-                color: buono.eScaduto
-                    ? ColoriApp.scaduto
-                    : buono.staPerScadere
-                        ? ColoriApp.inScadenza
-                        : ColoriApp.valido,
-              ),
-            ),
-            const SizedBox(height: 4),
-            BadgeScadenza(buono: buono),
-          ],
-        ),
-        trailing: const Icon(
-          Icons.chevron_right,
-          color: ColoriApp.bordoChiaro,
-        ),
-        isThreeLine: true,
-      ),
-    );
-  }
-
   // Mostra il selettore dei giorni di anticipo
   void _mostraSelettoreGiorni(
       BuildContext context, WidgetRef ref, PreferenzeNotifiche prefs) {
@@ -333,7 +209,7 @@ class AlertsScreen extends ConsumerWidget {
             ...opzioniGiorni.map((giorni) {
               final eSelezionato = giorni == prefs.giorniAnticipo;
               return ListTile(
-                title: Text('$giorni giorni prima'),
+                title: Text('$giorni ${giorni == 1 ? 'giorno' : 'giorni'} prima'),
                 trailing: eSelezionato
                     ? const Icon(Icons.check, color: ColoriApp.principale)
                     : null,

@@ -440,11 +440,25 @@ class _StatoAddScreen extends ConsumerState<AddScreen> {
     setState(() => _staSalvando = true);
 
     try {
-      // Ottieni la posizione: prima quella ricercata, poi quella GPS
+      // Ottieni la posizione: prima quella ricercata manualmente, poi quella GPS
       final posizione = ref.read(providerPosizione).value;
       final latitudine = _latitudineRicercata ?? posizione?.latitude;
       final longitudine = _longitudineRicercata ?? posizione?.longitude;
-      final indirizzo = _indirizzoRicercato;
+
+      // Se abbiamo coordinate GPS ma nessun indirizzo testuale,
+      // esegui il geocoding inverso per ottenere l'indirizzo
+      String? indirizzo = _indirizzoRicercato;
+      if (indirizzo == null && latitudine != null && longitudine != null) {
+        try {
+          indirizzo = await ServizioGeocoding.coordinateAdIndirizzo(
+            latitudine: latitudine,
+            longitudine: longitudine,
+          );
+        } catch (_) {
+          // Se il geocoding inverso fallisce, le coordinate vengono salvate
+          // comunque senza indirizzo testuale
+        }
+      }
 
       final nuovoBuono = BuonoSconto(
         nomeNegozio: _controllerNomeNegozio.text.trim(),
