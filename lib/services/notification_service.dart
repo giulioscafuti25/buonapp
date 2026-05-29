@@ -4,15 +4,18 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_dati;
+
 import '../models/buono_sconto.dart';
 
-//Eccezione personalizzata per gli errori nelle notifiche
-class EccezioneNotifiche implements Exception {
-  //Messaggio di errore
+// Eccezione personalizzata per gli errori delle notifiche
+class EccezioneNotifica implements Exception {
+  // Messaggio di errore
   final String messaggio;
-  const EccezioneNotifiche(this.messaggio);
+
+  const EccezioneNotifica(this.messaggio);
+
   @override
-  String toString() => 'EccezioneNotifiche: $messaggio';
+  String toString() => 'EccezioneNotifica: $messaggio';
 }
 
 // Callback per le notifiche ricevute in background
@@ -20,121 +23,131 @@ class EccezioneNotifiche implements Exception {
 @pragma('vm:entry-point')
 void notificationTapBackground(NotificationResponse risposta) {}
 
-class ServizioNotifiche{
-  //Istanza del plugin notifiche passata dal main.dart
+class ServizioNotifiche {
+  // Istanza del plugin notifiche passata dal main.dart
   static late FlutterLocalNotificationsPlugin _pluginNotifiche;
 
-  //Inizializza il servizio notifiche all'avvio dell'app
+  // Inizializza il servizio notifiche all'avvio dell'app
   static Future<void> inizializza(
-    FlutterLocalNotificationsPlugin pluginNotifiche) async{
-      try{
-    _pluginNotifiche = pluginNotifiche;
+      FlutterLocalNotificationsPlugin pluginNotifiche) async {
+    try {
+      _pluginNotifiche = pluginNotifiche;
 
-    //Inizializza i fusi orari
-    tz_dati.initializeTimeZones();
+      // Inizializza i fusi orari
+      tz_dati.initializeTimeZones();
 
-    //impostazioni di inizializzazione per Android
-    const impostazioniAndroid = 
-      AndroidInitializationSettings('@mipmap/ic_launcher');
+      // Imposta il fuso orario locale italiano
+      tz.setLocalLocation(tz.getLocation('Europe/Rome'));
 
-    //Impostazioni di inizializzazione per iOS
-    const impostazioniIOS = DarwinInitializationSettings(
-      requestSoundPermission: true,
-      requestBadgePermission: true,
-      requestAlertPermission: true,
-    );
+      // Impostazioni di inizializzazione per Android
+      const impostazioniAndroid =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    //Impostazioni combinate per tutte le piattaforme
-    const impostazioniGenerali = InitializationSettings(
-      android: impostazioniAndroid,
-      iOS: impostazioniIOS,
-    );
-
-    await _pluginNotifiche.initialize(
-      settings: impostazioniGenerali,
-      onDidReceiveNotificationResponse: (NotificationResponse risposta) {},
-      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
+      // Impostazioni di inizializzazione per iOS
+      const impostazioniIOS = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
       );
-      } catch (errore){
-        throw EccezioneNotifiche('Errore durante l\'inizializzazione: $errore');
-      }
-    }
 
-    //Schedula una notifica per un buono in scadenza
-    //giorniAnticipo: quanti giorni prima della scadenza inviare la notifica
-    //orarioNotifica: orario del giorno in cui inviare la notifica (es. 9:00)
-    static Future<void> schedulaNotifica({
-      required BuonoSconto buono,
-      required int giorniAnticipo,
-      required int orarioNotifica,
-    }) async {
-      try{
-      //Calcola la data in cui inviare la notifica
+      // Impostazioni combinate per tutte le piattaforme
+      const impostazioniGenerali = InitializationSettings(
+        android: impostazioniAndroid,
+        iOS: impostazioniIOS,
+      );
+
+      // Inizializza il plugin con le impostazioni
+      await _pluginNotifiche.initialize(
+        settings: impostazioniGenerali,
+        onDidReceiveNotificationResponse: (NotificationResponse risposta) {},
+        onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
+      );
+    } catch (errore) {
+      throw EccezioneNotifica(
+          'Errore durante l\'inizializzazione delle notifiche: $errore');
+    }
+  }
+
+  // Schedula una notifica per un buono in scadenza
+  // giorniAnticipo: quanti giorni prima della scadenza inviare la notifica
+  // orarioNotifica: ora del giorno in cui inviare la notifica
+  // minutiNotifica: minuti dell'orario della notifica
+  static Future<void> schedulaNotifica({
+    required BuonoSconto buono,
+    required int giorniAnticipo,
+    required int orarioNotifica,
+    required int minutiNotifica,
+  }) async {
+    try {
+      // Calcola la data in cui inviare la notifica
       final dataNotifica = buono.dataScadenza.subtract(
         Duration(days: giorniAnticipo),
       );
 
-      //Se la data di notifica è già passata, non schedulare nulla
-      if (dataNotifica.isBefore(DateTime.now())) return;
-
-      //Data e ora esatti in cui inviare la notifica
+      // Data e ora esatta della notifica nel fuso orario locale
       final dataOraNotifica = tz.TZDateTime(
         tz.local,
         dataNotifica.year,
         dataNotifica.month,
         dataNotifica.day,
-        orarioNotifica, // ora impostata dall'utente
-        0, // minuti
+        orarioNotifica,
+        minutiNotifica,
       );
 
-      //Dettagli della notifica per Android
+      // Se la data e ora della notifica è già passata non la schedula
+      if (dataOraNotifica.isBefore(tz.TZDateTime.now(tz.local))) return;
+
+      // Dettagli della notifica per Android
       const dettagliAndroid = AndroidNotificationDetails(
-        'canale_scadenza', //id canale
-        'Scadenze buoni', //nome canale
-        channelDescription: 'Notifiche per buoni in scadenza',
+        'canale_scadenza',
+        'Scadenze buoni',
+        channelDescription: 'Notifiche per i buoni in scadenza',
         importance: Importance.high,
         priority: Priority.high,
       );
 
-      //Dettagli della notifica per iOS
+      // Dettagli della notifica per iOS
       const dettagliIOS = DarwinNotificationDetails();
 
-      //Dettagli combinati per tutte le piattaforme
+      // Dettagli combinati
       const dettagliGenerali = NotificationDetails(
         android: dettagliAndroid,
         iOS: dettagliIOS,
       );
 
-      //Schedula la notifica
+      // Schedula la notifica con zonedSchedule
       await _pluginNotifiche.zonedSchedule(
-        id: buono.id ?? 0, //id della notifica (usa id del buono o 0 se null)
-        title: '⏰ Buono in scadenza!', //titolo della notifica
-        body:  '${buono.nomeNegozio} scade tra $giorniAnticipo giorni', //corpo della notifica
-        scheduledDate: dataOraNotifica, //quando inviarla
-        notificationDetails: dettagliGenerali, //dettagli della notifica
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        payload: buono.id.toString(), //payload con id del buono per eventuali azioni future
+        id: buono.id ?? 0,
+        title: '⏰ Buono in scadenza!',
+        body: '${buono.nomeNegozio} scade tra $giorniAnticipo ${giorniAnticipo == 1 ? 'giorno' : 'giorni'}',
+        scheduledDate: dataOraNotifica,
+        notificationDetails: dettagliGenerali,
+        androidScheduleMode: AndroidScheduleMode.inexact,
+        payload: buono.id.toString(),
       );
-      } catch (errore){
-        throw EccezioneNotifiche('Errore durante la schedulazione: $errore');
-      }
+    } catch (errore) {
+      throw EccezioneNotifica(
+          'Errore durante la schedulazione della notifica: $errore');
     }
-
-    //Cancella la notifica associata a un buono (es. quando viene eliminato o modificato)
-    static Future<void> cancellaNotifica(int idBuono) async {
-      try{
-      await _pluginNotifiche.cancel(id: idBuono);
-    } catch (errore){
-        throw EccezioneNotifiche('Errore durante la cancellazione: $errore');
-      }
   }
 
-    //Cancella tutte le notifiche schedulate
-    static Future<void> cancellaTutteNotifiche() async {
-      try{
+  // Cancella la notifica associata a un buono (es. quando viene eliminato)
+  static Future<void> cancellaNotifica(int idBuono) async {
+    try {
+      await _pluginNotifiche.cancel(id: idBuono);
+    } catch (errore) {
+      throw EccezioneNotifica(
+          'Errore durante la cancellazione della notifica: $errore');
+    }
+  }
+
+  // Cancella tutte le notifiche schedulate
+  static Future<void> cancellaTutteNotifiche() async {
+    try {
       await _pluginNotifiche.cancelAll();
-    } catch (errore){
-        throw EccezioneNotifiche('Errore durante la cancellazione: $errore');
+    } catch (errore) {
+      throw EccezioneNotifica(
+          'Errore durante la cancellazione di tutte le notifiche: $errore');
     }
   }
 }

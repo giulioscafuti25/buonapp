@@ -1,4 +1,4 @@
-//storage_serice.dart - Servizio per la persistenza locale dei dati
+//storage_service.dart - Servizio per la persistenza locale dei dati
 //Gestisce tutte le operazioni CRUD sul database SQLite
 
 import 'package:sqflite/sqflite.dart';
@@ -39,7 +39,7 @@ class ServizioStorage {
     //Ottieni il percorso della cartella dei database sul dispositivo
     final percorsoDatabase = await getDatabasesPath();
 
-    //Percorso completo del file del file del database
+    //Percorso completo del file del database
     final percorsoCompleto = join(percorsoDatabase, 'buonapp.db');
 
     return await openDatabase(
@@ -52,11 +52,11 @@ class ServizioStorage {
     }
   }
   
-  //Crea le tavole del databale alla prima apertura
+  //Crea le tavole del database alla prima apertura
   Future<void> _creaTavole(Database db, int versione) async {
     try{
     await db.execute('''
-      CREATA TABLE buoni(
+      CREATE TABLE buoni(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nomeNegozio TEXT NOT NULL,
         descrizione TEXT NOT NULL,
@@ -132,11 +132,13 @@ class ServizioStorage {
     }
   }
 
-  //Chiude la connessione al database 
+  //Chiude la connessione al database e azzera il riferimento
+  //In modo che il getter 'database' possa reinizializzarlo alla prossima chiamata
   Future<void> chiudiDatabase() async {
     try {
     final db = await database;
     await db.close();
+    _database = null; // Azzera il riferimento: il getter reinizializzerà il DB alla prossima chiamata
     } catch (errore){
       throw EccezioneStorage('Errore durante la chiusura del database: $errore');
     }
