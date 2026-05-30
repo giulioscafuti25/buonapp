@@ -18,6 +18,18 @@
     <!-- Permesso per internet (per le chiamate REST API a Nominatim) -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
+    <!-- Necessario per url_launcher su Android 11+ (Package Visibility) -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="geo" />
+        </intent>
+    </queries>
+
     <application
         android:label="buonapp"
         android:name="${applicationName}"

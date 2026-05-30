@@ -2,6 +2,7 @@
 // Inizializza Riverpod, le notifiche locali e avvia l'app
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -18,13 +19,17 @@ void main() async {
   // codice nativo (notifiche, database, ecc.)
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Abilita la modalita' edge-to-edge: l'app si estende dietro
+  // la navigation bar e la status bar di Android
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
   // Richiede il permesso per le notifiche (necessario su Android 13+)
   await Permission.notification.request();
 
   // Inizializza il servizio notifiche all'avvio
   await ServizioNotifiche.inizializza(pluginNotifiche);
 
-  // ProviderScope è il widget radice obbligatorio per Riverpod:
+  // ProviderScope e' il widget radice obbligatorio per Riverpod:
   // rende tutti i provider accessibili all'albero dei widget
   runApp(
     const ProviderScope(

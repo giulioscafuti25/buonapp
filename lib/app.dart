@@ -2,6 +2,7 @@
 // Definisce il tema Material Design e la navigazione principale
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -12,6 +13,15 @@ class BuonApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Imposta la navigation bar e status bar trasparenti
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarContrastEnforced: false,
+      ),
+    );
+
     return MaterialApp(
       // Nome dell'app mostrato nel task manager del telefono
       title: 'BuonApp',

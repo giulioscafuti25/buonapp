@@ -43,7 +43,6 @@ class _StatoMapScreen extends ConsumerState<MapScreen> {
   // Verifica se c'è connessione internet
   Future<void> _verificaConnessione() async {
     final risultato = await Connectivity().checkConnectivity();
-    if (!mounted) return;
     setState(() {
       _haConnessione = risultato.any((r) => r != ConnectivityResult.none);
     });
@@ -317,7 +316,13 @@ class _StatoMapScreen extends ConsumerState<MapScreen> {
         ),
       ),
       builder: (contestoSheet) => Padding(
-        padding: const EdgeInsets.all(DimensioniApp.paddingPagina),
+        padding: EdgeInsets.fromLTRB(
+          DimensioniApp.paddingPagina,
+          DimensioniApp.paddingPagina,
+          DimensioniApp.paddingPagina,
+          DimensioniApp.paddingPagina +
+              MediaQuery.of(contestoSheet).viewPadding.bottom,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -380,7 +385,6 @@ class _StatoMapScreen extends ConsumerState<MapScreen> {
                 child: const Text('Vedi dettaglio'),
               ),
             ),
-            const SizedBox(height: 8),
           ],
         ),
       ),
