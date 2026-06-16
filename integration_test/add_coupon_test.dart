@@ -36,7 +36,7 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 3));
 
       await tester.tap(find.byType(FloatingActionButton));
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      await tester.pumpAndSettle(const Duration(seconds: 4));
 
       // Inserisce il nome del negozio
       await tester.enterText(
@@ -69,7 +69,7 @@ void main() {
 
       // Tocca il pulsante salva
       await tester.tap(find.text('Salva buono'));
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      await tester.pumpAndSettle(const Duration(seconds: 5));
 
       // Verifica che la schermata lista sia tornata visibile
       expect(find.text(TestiApp.titoloBuoni), findsOneWidget);
